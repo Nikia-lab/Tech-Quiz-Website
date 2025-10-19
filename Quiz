@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tech Quiz — 30 Questions</title>
+<style>
+  :root{
+    --accent:#6366f1; --bg-1:#071033; --bg-2:#07162a; --card:#0b1220; --muted:#94a3b8;
+    --success:#16a34a; --danger:#ef4444; --glass: rgba(255,255,255,0.04)
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial; background:linear-gradient(180deg,var(--bg-1) 0%, var(--bg-2) 70%);
+    color:#e6eef8; min-height:100vh; -webkit-font-smoothing:antialiased;
+  }
+
+  /* Center auth card */
+  #auth-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+  .card{
+    width:100%; max-width:520px; padding:28px; border-radius:14px; background:var(--glass);
+    border:1px solid rgba(255,255,255,0.06); box-shadow:0 10px 30px rgba(2,6,23,0.6);
+  }
+  h1{margin:0 0 8px;font-size:22px}
+  p.lead{color:var(--muted); margin:0 0 18px}
+
+  .tabs{display:flex;gap:10px;margin-bottom:20px}
+  .tab{flex:1;text-align:center;padding:10px;border-radius:10px;background:rgba(255,255,255,0.03);cursor:pointer;color:var(--muted);font-weight:700}
+  .tab.active{background:var(--accent);color:#fff;box-shadow:0 6px 18px rgba(99,102,241,0.18)}
+
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input, textarea{
+    width:100%; padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.06);
+    background:transparent; color:#fff; margin-bottom:12px; font-size:14px;
+  }
+  button.btn{
+    background:var(--accent); color:white; border:0; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:800;
+  }
+
+  /* Loader overlay */
+  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.8);visibility:hidden;opacity:0;transition:all .25s;z-index:50}
+  .overlay.show{visibility:visible;opacity:1}
+  .dots{display:flex;gap:10px}
+  .dot{width:12px;height:12px;border-radius:50%;background:var(--accent);animation:pop 1s infinite}
+  .dot:nth-child(2){animation-delay:.18s}
+  .dot:nth-child(3){animation-delay:.36s}
+  @keyframes pop{0%,100%{transform:translateY(5px);opacity:.4}50%{transform:translateY(-6px);opacity:1}}
+
+  /* Dashboard layout */
+  #dashboard{display:none;height:100vh;width:100vw;overflow:hidden}
+  .sidebar{
+    position:fixed; left:16px; top:16px; bottom:16px; width:240px; padding:20px; border-radius:12px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border:1px solid rgba(255,255,255,0.04); box-shadow:0 8px 30px rgba(2,6,23,0.6);
+    display:flex; flex-direction:column; gap:12px; align-items:center;
+  }
+  .sidebar h2{margin:0;font-size:18px}
+  .sidebar .menu{width:100%;display:flex;flex-direction:column;gap:10px;margin-top:8px}
+  .sidebar button{width:100%;padding:10px;border-radius:10px;border:0;background:rgba(255,255,255,0.03);color:#e6eef8;font-weight:700;cursor:pointer}
+  .sidebar button:hover{background:rgba(99,102,241,0.12)}
+
+  .main{margin-left:280px;padding:36px;height:100vh;overflow:auto}
+  .panel{background:rgba(255,255,255,0.03);padding:20px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+
+  /* Profile panel modal */
+  .profile-modal{position:fixed;right:20px;top:20px;width:320px;background:#06122a;padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 8px 40px rgba(0,0,0,0.6);z-index:60;display:none}
+  .profile-modal.show{display:block}
+  .profile-modal h3{margin-top:0}
+  .row{display:flex;gap:10px;align-items:center}
+  .muted{color:var(--muted)}
+  .small{font-size:13px}
+
+  /* Quiz UI */
+  .quiz-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .progress-wrap{flex:1;margin-left:12px}
+  .progress{height:10px;background:rgba(255,255,255,0.06);border-radius:6px;overflow:hidden}
+  .progress > i{display:block;height:100%;width:0%;background:linear-gradient(90deg,#10b981,#6366f1);transition:width .4s}
+
+  .question{font-size:20px;font-weight:700;margin:18px 0}
+  .options{display:flex;flex-direction:column;gap:10px}
+  .opt-btn{background:rgba(255,255,255,0.04);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);color:#fff;cursor:pointer;text-align:left;font-weight:700}
+  .opt-btn.correct{background:rgba(16,185,129,0.18);border-color:rgba(16,185,129,0.35)}
+  .opt-btn.wrong{background:rgba(239,68,68,0.14);border-color:rgba(239,68,68,0.35)}
+  .timer-bar{height:8px;background:rgba(255,255,255,0.04);border-radius:8px;overflow:hidden;margin-top:10px}
+  .timer-bar > i{height:100%;display:block;width:100%;background:linear-gradient(90deg,#f97316,#ef4444);transform-origin:left;transition:width 1s linear}
+
+  /* Features */
+  .features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:12px}
+
+  /* Contact form */
+  .contact-form textarea{min-height:120px;resize:vertical}
+
+  /* final score */
+  .score{font-size:20px;font-weight:800;color:var(--accent)}
+  .center{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+
+  /* responsive */
+  @media (max-width:900px){
+    .sidebar{position:static;width:100%;display:flex;flex-direction:row;padding:12px;gap:8px;border-radius:10px;margin:12px}
+    .main{margin-left:0;padding:16px}
+    .profile-modal{right:10px;left:10px;top:unset;bottom:20px}
+  }
+</style>
+</head>
+<body>
+  <!-- AUTH -->
+  <div id="auth-wrap">
+    <div class="card" role="main" aria-labelledby="signin">
+      <h1 id="signin">Tech Quiz — Login / Register</h1>
+      <p class="lead">Create an account or login. Your profile is saved locally in your browser.</p>
+
+      <div class="tabs">
+        <div class="tab active" id="login-tab" role="button">Login</div>
+        <div class="tab" id="register-tab" role="button">Register</div>
+      </div>
+
+      <form id="login-form">
+        <label for="login-email">Email</label>
+        <input id="login-email" type="email" placeholder="you@example.com" required>
+        <label for="login-pass">Password</label>
+        <input id="login-pass" type="password" placeholder="••••••••" required>
+        <button class="btn" type="submit">Login</button>
+      </form>
+
+      <form id="register-form" style="display:none">
+        <label for="reg-name">Full name</label>
+        <input id="reg-name" type="text" placeholder="Juan Dela Cruz" required>
+        <label for="reg-email">Email</label>
+        <input id="reg-email" type="email" placeholder="you@example.com" required>
+        <label for="reg-pass">Password</label>
+        <input id="reg-pass" type="password" placeholder="••••••••" required>
+        <button class="btn" type="submit">Create account</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- LOADER -->
+  <div class="overlay" id="loader" aria-hidden="true">
+    <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" aria-hidden="true">
+    <aside class="sidebar" aria-label="Main menu">
+      <h2>QuizTech</h2>
+      <div class="menu">
+        <button id="btn-profile">Profile</button>
+        <button id="btn-features">Features</button>
+        <button id="btn-quiz">Quiz</button>
+        <button id="btn-contact">Contact / Report</button>
+        <button id="btn-logout">Logout</button>
+      </div>
+      <div class="small muted">Local demo • no backend</div>
+    </aside>
+
+    <main class="main" id="main-content" tabindex="0">
+      <div class="panel center">
+        <h2 style="margin:0">Welcome!</h2>
+        <p class="muted small">Click Quiz to begin — 30 tech questions, 30s per question.</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- Profile modal -->
+  <div class="profile-modal" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+    <h3 id="profileTitle">Profile</h3>
+    <div class="small muted">Edit your name & email — stored locally</div>
+    <div style="height:12px"></div>
+    <label class="small muted">Full name</label>
+    <input id="pf-name" type="text" placeholder="Your name">
+    <label class="small muted">Email</label>
+    <input id="pf-email" type="email" placeholder="you@example.com">
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn" id="pf-save">Save</button>
+      <button class="btn" id="pf-close" style="background:#374151">Close</button>
+    </div>
+  </div>
+
+  <!-- Sounds (hosted assets) -->
+  <audio id="snd-correct" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_9622abcfde.mp3?filename=correct-2-46134.mp3"></audio>
+  <audio id="snd-wrong" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_bf82f42b7c.mp3?filename=error-2-46134.mp3"></audio>
+  <audio id="snd-time" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_4d74e73a6c.mp3?filename=warning-2-46134.mp3"></audio>
+  <audio id="snd-finish" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_9fb0b05c5f.mp3?filename=success-1-46134.mp3"></audio>
+
+<script>
+/* ---------------------------
+  App state & utilities
+----------------------------*/
+const el = id => document.getElementById(id);
+const qCount = 30; // target questions (we provide 30 below)
+let questions = []; // will hold cloned/randomized questions
+let user = null;
+let currentIndex = 0;
+let score = 0;
+let timer = null;
+let timeLeft = 30;
+
+/* Elements */
+const loader = el('loader');
+const authWrap = el('auth-wrap');
+const dashboard = el('dashboard');
+const mainContent = el('main-content');
+
+const loginTab = el('login-tab'), registerTab = el('register-tab');
+const loginForm = el('login-form'), registerForm = el('register-form');
+
+const btnProfile = el('btn-profile'), btnFeatures = el('btn-features'), btnQuiz = el('btn-quiz'), btnContact = el('btn-contact'), btnLogout = el('btn-logout');
+const profileModal = el('profileModal'), pfName = el('pf-name'), pfEmail = el('pf-email'), pfSave = el('pf-save'), pfClose = el('pf-close');
+
+/* Sounds */
+const sCorrect = el('snd-correct'), sWrong = el('snd-wrong'), sTime = el('snd-time'), sFinish = el('snd-finish');
+
+/* ---------------------------
+  Question bank (30 items)
+  Each item: { q, a: [..4 choices], c:index }
+----------------------------*/
+const bank = [
+  {q:"What does CPU stand for?", a:["Central Processing Unit","Computer Power Unit","Control Processing Utility","Central Program Unit"], c:0},
+  {q:"Which company created the Android OS?", a:["Apple","Google","Microsoft","Samsung"], c:1},
+  {q:"Which language is used to structure web pages?", a:["CSS","Python","HTML","C++"], c:2},
+  {q:"What component is considered the 'brain' of the computer?", a:["RAM","Hard Drive","CPU","Monitor"], c:2},
+  {q:"What does 'HTTP' stand for?", a:["HyperText Transfer Protocol","HighText Transfer Protocol","Hyperlink Transfer Protocol","Hyper Transfer Text Protocol"], c:0},
+  {q:"Which technology is used to make web pages interactive?", a:["HTML","CSS","JavaScript","SQL"], c:2},
+  {q:"What does 'AI' stand for in tech?", a:["Automated Interface","Artificial Intelligence","Applied Internet","Advanced Integration"], c:1},
+  {q:"Which company makes the iPhone?", a:["Google","Samsung","Apple","Microsoft"], c:2},
+  {q:"What is 'open source' software?", a:["Paid software","Proprietary software","Software with publicly available code","Software only for businesses"], c:2},
+  {q:"What is the primary purpose of CSS?", a:["Database queries","Page structure","Styling & layout","Server-side processing"], c:2},
+  {q:"What does 'GPU' accelerate?", a:["Text rendering","Graphical computations","Network requests","File storage"], c:1},
+  {q:"Which cloud provider is by Amazon?", a:["Azure","AWS","GCP","Heroku"], c:1},
+  {q:"What does 'URL' stand for?", a:["Universal Resource Link","Uniform Resource Locator","Unified Reading Link","Universal Resource Locator"], c:1},
+  {q:"Which protocol is secure HTTP?", a:["FTP","SSH","HTTPS","SMTP"], c:2},
+  {q:"What is 'IoT'?", a:["Internet of Technology","Internet of Things","Integration of Tools","Internal Operating Technique"], c:1},
+  {q:"Which storage is fastest?", a:["HDD","SSD","DVD","Tape"], c:1},
+  {q:"What is 'RAM' used for?", a:["Long-term storage","Temporary working memory","Power supply","Network routing"], c:1},
+  {q:"What language is primarily used for iOS development?", a:["Kotlin","Swift","JavaScript","Ruby"], c:1},
+  {q:"Which of these is NOT a database?", a:["MySQL","MongoDB","Redis","React"], c:3},
+  {q:"What is 'blockchain' mainly used for?", a:["Distributed ledger","Image processing","Caching web pages","Video encoding"], c:0},
+  {q:"Which markup language is used for web pages?", a:["JSON","HTML","YAML","CSV"], c:1},
+  {q:"What is 'SSH' commonly used for?", a:["Secure remote login","Image editing","Website styling","Database backup"], c:0},
+  {q:"Which wireless tech is common for short-range connections?", a:["Ethernet","Bluetooth","5G","Fiber"], c:1},
+  {q:"What is 'framework' in software?", a:["Hardware component","Pre-built structure for apps","Virus","Network cable"], c:1},
+  {q:"Which is an example of a front-end library?", a:["React","Django","Flask","Laravel"], c:0},
+  {q:"What is 'responsive design'?", a:["Design for printing only","Design that adapts to screen sizes","Design that needs server","Design with fixed width"], c:1},
+  {q:"What does 'UX' stand for?", a:["Ultimate eXperience","User Experience","Universal XML","Unilateral eXchange"], c:1},
+  {q:"Which is a programming paradigm?", a:["Functional","Blue","Round","Square"], c:0},
+  {q:"What is '5G' primarily related to?", a:["Battery tech","Wireless mobile networks","Storage","Operating system"], c:1},
+  {q:"What does 'API' allow developers to do?", a:["Paint images","Interact between systems","Compile code","Encrypt files"], c:1}
+];
+
+/* ---------------------------
+  Helpers
+----------------------------*/
+function randShuffle(arr){
+  // Fisher-Yates
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function showLoader(cb, ms=900){
+  loader.classList.add('show');
+  setTimeout(()=>{ loader.classList.remove('show'); if(cb) cb(); }, ms);
+}
+function saveUserToStorage(){
+  if(user) localStorage.setItem('quiz_user', JSON.stringify(user));
+}
+function loadUserFromStorage(){
+  try{
+    const u = JSON.parse(localStorage.getItem('quiz_user'));
+    if(u && u.name) return u;
+  }catch(e){}
+  return null;
+}
+
+/* ---------------------------
+  Auth (login/register) flow
+----------------------------*/
+loginTab.onclick = ()=>{
+  loginTab.classList.add('active'); registerTab.classList.remove('active');
+  loginForm.style.display='block'; registerForm.style.display='none';
+};
+registerTab.onclick = ()=>{
+  registerTab.classList.add('active'); loginTab.classList.remove('active');
+  registerForm.style.display='block'; loginForm.style.display='none';
+};
+
+loginForm.onsubmit = (e)=>{
+  e.preventDefault();
+  const email = el('login-email').value.trim().toLowerCase();
+  const pass = el('login-pass').value;
+  // demo: allow login even if not registered; if registered, validate
+  const stored = loadUserFromStorage();
+  if(stored && stored.email === email && stored.pass === pass){
+    user = stored;
+  } else {
+    // if no stored or mismatch, create a quick session user (demo)
+    user = { name: email.split('@')[0] || 'user', email, pass };
+    saveUserToStorage();
+  }
+  showLoader(()=>{
+    authWrap.style.display='none';
+    dashboard.style.display='block';
+    refreshWelcome();
+  },1000);
+};
+
+registerForm.onsubmit = (e)=>{
+  e.preventDefault();
+  const name = el('reg-name').value.trim();
+  const email = el('reg-email').value.trim().toLowerCase();
+  const pass = el('reg-pass').value;
+  user = { name: name || (email.split('@')[0]||'user'), email, pass };
+  saveUserToStorage();
+  showLoader(()=>{
+    authWrap.style.display='none';
+    dashboard.style.display='block';
+    refreshWelcome();
+  },1000);
+};
+
+function refreshWelcome(){
+  mainContent.innerHTML = `<div class="panel center"><h2>Welcome, ${escapeHtml(user.name)}!</h2><p class="muted small">Click <b>Quiz</b> to start — 30 questions, 30s each. Your progress will be shown at top.</p></div>`;
+}
+
+/* ---------------------------
+  Profile modal (edit/save)
+----------------------------*/
+btnProfile.onclick = ()=> {
+  // fill inputs
+  pfName.value = user?.name || '';
+  pfEmail.value = user?.email || '';
+  profileModal.classList.add('show');
+};
+pfClose.onclick = ()=> profileModal.classList.remove('show');
+pfSave.onclick = ()=>{
+  user.name = pfName.value.trim() || user.name;
+  user.email = pfEmail.value.trim() || user.email;
+  saveUserToStorage();
+  profileModal.classList.remove('show');
+  refreshWelcome();
+  flashMessage('Profile saved', 900);
+};
+
+/* ---------------------------
+  Features page
+----------------------------*/
+btnFeatures.onclick = ()=> {
+  showLoader(()=>{
+    mainContent.innerHTML = `
+      <div class="panel">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <h2 style="margin:0">Technology — Today</h2>
+            <div class="muted small">A quick overview of modern technology trends</div>
+          </div>
+        </div>
+        <div class="features-grid" style="margin-top:16px">
+          <div class="panel">
+            <h4>Artificial Intelligence</h4>
+            <p class="muted small">AI automates tasks, enables smart services, and powers data-driven decisions.</p>
+          </div>
+          <div class="panel">
+            <h4>Cloud & DevOps</h4>
+            <p class="muted small">Scalable infrastructure, CI/CD, and containerization make deployment faster and resilient.</p>
+          </div>
+          <div class="panel">
+            <h4>5G & Connectivity</h4>
+            <p class="muted small">Faster mobile networks enable low-latency apps, AR/VR, and better IoT performance.</p>
+          </div>
+          <div class="panel">
+            <h4>Cybersecurity</h4>
+            <p class="muted small">Protecting systems and data is critical — secure design is now standard practice.</p>
+          </div>
+          <div class="panel">
+            <h4>Edge & IoT</h4>
+            <p class="muted small">Processing data closer to devices improves speed and reduces bandwidth needs.</p>
+          </div>
+          <div class="panel">
+            <h4>Quantum Computing</h4>
+            <p class="muted small">Emerging tech with potential for breakthroughs in simulation and cryptography.</p>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+};
+
+/* ---------------------------
+  Contact / Report
+----------------------------*/
+btnContact.onclick = ()=> {
+  showLoader(()=>{
+    mainContent.innerHTML = `
+      <div class="panel" style="max-width:720px;margin:auto;text-align:left">
+        <h2 style="margin:0 0 8px">Contact / Report</h2>
+        <div class="muted small">Send a message to the site owner (simulated).</div>
+        <div style="height:12px"></div>
+        <label class="small muted">Your name</label>
+        <input id="report-name" placeholder="Your name" value="${escapeHtml(user.name)}">
+        <label class="small muted">Your email</label>
+        <input id="report-email" placeholder="you@example.com" value="${escapeHtml(user.email)}">
+        <label class="small muted">Message</label>
+        <textarea id="report-msg" placeholder="Write your report or feedback here..."></textarea>
+        <div style="display:flex;gap:10px">
+          <button class="btn" id="report-send">Send Report</button>
+          <button class="btn" id="report-clear" style="background:#374151">Clear</button>
+        </div>
+      </div>
+    `;
+    // wire buttons
+    el('report-send').onclick = ()=> {
+      const rname = el('report-name').value.trim();
+      const remail = el('report-email').value.trim();
+      const rmsg = el('report-msg').value.trim();
+      if(!rmsg){ alert('Please write a message before sending.'); return; }
+      // store in localStorage reports
+      const reports = JSON.parse(localStorage.getItem('quiz_reports') || "[]");
+      reports.unshift({ name:rname, email:remail, msg:rmsg, at: new Date().toISOString() });
+      localStorage.setItem('quiz_reports', JSON.stringify(reports));
+      showLoader(()=>{ mainContent.innerHTML = `<div class="panel center"><h3>✅ Report sent</h3><div class="muted small">Thank you — owner will review your message.</div></div>`; },800);
+    };
+    el('report-clear').onclick = ()=> { el('report-name').value=''; el('report-msg').value=''; };
+  });
+};
+
+/* ---------------------------
+  Logout
+----------------------------*/
+btnLogout.onclick = ()=> {
+  showLoader(()=>{
+    dashboard.style.display='none';
+    authWrap.style.display='flex';
+    currentIndex=0; score=0; user=null;
+    // Clear local session (keeps saved account but remove session)
+    // Optionally clear localStorage: localStorage.removeItem('quiz_user');
+  },800);
+};
+
+/* ---------------------------
+  Quiz: start / render / timer
+----------------------------*/
+btnQuiz.onclick = ()=> {
+  // prepare randomized set of qCount items
+  // if bank length >= qCount, pick qCount random; else repeat shuffled to fill
+  const totalNeeded = qCount;
+  let pool = randShuffle(bank);
+  while(pool.length < totalNeeded){
+    pool = pool.concat(randShuffle(bank));
+  }
+  pool = pool.slice(0, totalNeeded);
+  // for each question, also shuffle choices
+  questions = pool.map(item=>{
+    const choiceOrder = randShuffle([0,1,2,3]);
+    const choices = choiceOrder.map(i=>item.a[i]);
+    const correctNewIndex = choiceOrder.indexOf(item.c);
+    return { q: item.q, a: choices, c: correctNewIndex };
+  });
+  currentIndex = 0; score = 0;
+  showLoader(()=>{
+    renderQuizScreen();
+    loadQuestion();
+  },800);
+};
+
+function renderQuizScreen(){
+  mainContent.innerHTML = `
+    <div class="panel" style="max-width:900px;margin:auto">
+      <div class="quiz-header">
+        <div>
+          <div class="small muted">Player</div>
+          <div style="font-weight:800">${escapeHtml(user.name || 'Guest')}</div>
+        </div>
+        <div class="progress-wrap">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="small muted">Progress</div>
+            <div style="width:100%">
+              <div class="progress"><i id="overallProgress" style="width:0%"></i></div>
+            </div>
+            <div class="small muted" id="qIndicator">0/${qCount}</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="small muted">Score</div>
+          <div id="scoreDisplay" style="font-weight:800">0</div>
+        </div>
+      </div>
+
+      <div style="height:16px"></div>
+      <div id="quizBody">
+        <!-- replaced dynamically -->
+      </div>
+    </div>
+  `;
+}
+
+function loadQuestion(){
+  clearInterval(timer);
+  if(currentIndex >= questions.length){
+    // finished
+    sFinish.play().catch(()=>{});
+    mainContent.innerHTML = `
+      <div class="panel center" style="max-width:720px;margin:auto">
+        <h2>🎉 Quiz complete</h2>
+        <div class="score">${score} / ${questions.length}</div>
+        <div class="muted small">You answered ${score} correctly out of ${questions.length}.</div>
+        <div style="height:12px"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" id="retake">Retake Quiz</button>
+          <button class="btn" id="backHome" style="background:#374151">Back to Home</button>
+        </div>
+      </div>
+    `;
+    // wire up retake/back
+    el('retake').onclick = ()=> { btnQuiz.click(); };
+    el('backHome').onclick = ()=> { refreshWelcome(); };
+    return;
+  }
+
+  // update header / progress
+  const pct = Math.round((currentIndex / questions.length)*100);
+  el('overallProgress').style.width = `${pct}%`;
+  el('qIndicator').textContent = `${currentIndex+1}/${questions.length}`;
+  el('scoreDisplay').textContent = score;
+
+  // render current question
+  const item = questions[currentIndex];
+  const quizBody = el('quizBody');
+  quizBody.innerHTML = `
+    <div>
+      <div class="question">Q${currentIndex+1}. ${escapeHtml(item.q)}</div>
+      <div class="options" id="opts"></div>
+      <div class="timer-bar" aria-hidden="true"><i id="timeBar" style="width:100%"></i></div>
+      <div style="height:8px"></div>
+      <div class="muted small">You have <b id="timeText">30</b> seconds for this question.</div>
+    </div>
+  `;
+
+  // add options
+  const opts = el('opts');
+  item.a.forEach((opt, idx)=>{
+    const b = document.createElement('button');
+    b.className = 'opt-btn';
+    b.innerHTML = escapeHtml(opt);
+    b.onclick = ()=> selectOption(idx, b);
+    opts.appendChild(b);
+  });
+
+  // start timer (30 seconds)
+  timeLeft = 30;
+  el('timeText').textContent = timeLeft;
+  el('timeBar').style.width = '100%';
+  timer = setInterval(()=>{
+    timeLeft--;
+    el('timeText').textContent = timeLeft;
+    const widthPct = Math.max(0, (timeLeft/30)*100);
+    el('timeBar').style.width = widthPct + '%';
+    // warning beep at 5s or less (play only once when crossing 5)
+    if(timeLeft===5) { sTime.play().catch(()=>{}); }
+    if(timeLeft<=0){
+      clearInterval(timer);
+      // treat as wrong and move on (reveal correct briefly)
+      revealAnswer(null, true);
+    }
+  },1000);
+}
+
+/* selection & reveal */
+function selectOption(chosenIndex, btnEl){
+  clearInterval(timer);
+  const item = questions[currentIndex];
+  const correctIndex = item.c;
+  const optsEls = document.querySelectorAll('.opt-btn');
+  // mark selected
+  if(chosenIndex === correctIndex){
+    score++;
+    btnEl.classList.add('correct');
+    sCorrect.play().catch(()=>{});
+  } else {
+    btnEl.classList.add('wrong');
+    // mark correct one too
+    if(optsEls[correctIndex]) optsEls[correctIndex].classList.add('correct');
+    sWrong.play().catch(()=>{});
+  }
+  // update header score instantly
+  el('scoreDisplay').textContent = score;
+  // after short pause, next
+  setTimeout(()=>{ currentIndex++; loadQuestion(); }, 900);
+}
+
+function revealAnswer(_, timedOut=false){
+  // show correct highlight and sound (timed out considered wrong)
+  const item = questions[currentIndex];
+  const optsEls = document.querySelectorAll('.opt-btn');
+  if(optsEls[item.c]) optsEls[item.c].classList.add('correct');
+  if(timedOut){ sWrong.play().catch(()=>{}); }
+  // proceed after a short delay
+  setTimeout(()=>{ currentIndex++; loadQuestion(); }, 1200);
+}
+
+/* ---------------------------
+  Utility: flash message
+----------------------------*/
+function flashMessage(msg, ms=800){
+  const div = document.createElement('div');
+  div.textContent = msg;
+  div.style.position='fixed'; div.style.left='50%'; div.style.transform='translateX(-50%)';
+  div.style.bottom='28px'; div.style.background='rgba(0,0,0,0.6)'; div.style.padding='10px 16px';
+  div.style.borderRadius='10px'; div.style.zIndex=100; document.body.appendChild(div);
+  setTimeout(()=>{ div.remove(); }, ms);
+}
+
+/* ---------------------------
+  Utilities & safety
+----------------------------*/
+function escapeHtml(s){
+  if(!s) return '';
+  return s.replace(/[&<>"'`]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c]));
+}
+
+/* ---------------------------
+  Init: load saved user if exists
+----------------------------*/
+(function init(){
+  const stored = loadUserFromStorage();
+  if(stored){
+    // automatically sign in the stored user for demo
+    user = stored;
+    authWrap.style.display = 'none';
+    dashboard.style.display = 'block';
+    refreshWelcome();
+  } else {
+    authWrap.style.display = 'flex';
+    dashboard.style.display = 'none';
+  }
+})();
+</script>
+</body>
+</html>

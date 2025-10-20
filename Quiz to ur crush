@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Quiz Master — Vanilla JS</title>
+  <style>
+    /* ======= Base / Reset ======= */
+    * { box-sizing: border-box; }
+    html,body { height: 100%; margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+    button { font-family: inherit; cursor: pointer; }
+    img { max-width: 100%; display:block; }
+
+    /* ======= Layout ======= */
+    body {
+      min-height: 100%;
+      background: linear-gradient(135deg,#e6f0ff 0%, #f3e9ff 50%, #ffeaf1 100%);
+      padding-bottom: 40px;
+      color: #1f2937;
+    }
+    .container { max-width: 1000px; margin: 28px auto; padding: 16px; }
+
+    /* Header */
+    header {
+      background: linear-gradient(90deg,#2563eb 0%, #7c3aed 100%);
+      color: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(37,99,235,0.12);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+    }
+    header h1 { margin:0; font-size: 22px; font-weight:700; }
+    header p { margin:0; color: rgba(255,255,255,0.9); font-size: 13px; }
+
+    .header-controls { display:flex; align-items:center; gap:12px; }
+
+    .icon-btn {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:44px; height:44px; border-radius:999px; border: none;
+      transition: transform .12s ease, box-shadow .12s ease;
+      background: rgba(255,255,255,0.95); color:#6d28d9;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .icon-btn.disabled { background:#2563eb; color:#fff; }
+
+    /* Card */
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(2,6,23,0.06);
+      padding: 20px;
+      margin-top: 18px;
+    }
+    .card.big { padding: 36px; }
+
+    /* Upload area */
+    .upload-area {
+      border-radius: 12px;
+      border: 2px dashed #9ec0ff;
+      padding: 48px 28px;
+      text-align:center;
+      position:relative;
+    }
+    .upload-area:hover { border-color:#b794f4; background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.3)); }
+    .upload-input { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+    .upload-emoji { font-size:44px; display:block; margin: 8px auto 16px; animation: bounce 1.4s infinite; }
+    @keyframes bounce {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+      100% { transform: translateY(0); }
+    }
+
+    .file-info { background:#eff6ff; border:1px solid #dbeafe; padding:12px; border-radius:8px; margin-top:12px; color:#1e3a8a; }
+
+    /* Loading */
+    .loading-dots { display:flex; gap:8px; justify-content:center; margin:6px 0 18px; }
+    .dot { width:10px; height:10px; border-radius:50%; background:#2563eb; animation: dot-bob 1.0s infinite; opacity:0.95; }
+    .dot.purple { background:#7c3aed; animation-delay: .18s; }
+    .dot.pink   { background:#ec4899; animation-delay: .36s; }
+    @keyframes dot-bob { 0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)} }
+
+    .progress-wrap { width:100%; max-width:520px; margin:0 auto; }
+    .progress-bg { height:10px; background:#f3f4f6; border-radius:999px; overflow:hidden; }
+    .progress-fill {
+      height:100%; width:0%;
+      background: linear-gradient(90deg,#2563eb,#7c3aed,#ec4899);
+      transition: width .45s ease;
+    }
+    .progress-percent { text-align:center; margin-top:8px; font-weight:600; color:#374151; }
+
+    .loading-steps { max-width:420px; margin: 18px auto 0; text-align:left; }
+    .loading-step { display:flex; gap:10px; align-items:center; margin-bottom:10px; color:#374151; }
+    .step-bullet { width:20px; height:20px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:12px; background:#e5e7eb; color:#9ca3af; }
+
+    /* Ready - Skills/Features */
+    .grid { display:grid; gap:12px; }
+    .grid.cols-2 { grid-template-columns: repeat(2,1fr); }
+    .skill { display:flex; gap:12px; align-items:flex-start; padding:12px; border-radius:10px; background:#f8fafc; }
+    .skill h4 { margin:0; font-size:15px; font-weight:600; }
+    .skill p { margin:4px 0 0; font-size:13px; color:#475569; }
+
+    .feature { padding:10px; border-left:6px solid #c7d2fe; background:white; border-radius:6px; }
+
+    .start-btn {
+      width:100%;
+      display:inline-flex; gap:10px; align-items:center; justify-content:center;
+      padding:14px 18px; border-radius:12px; border:none; color:white;
+      font-weight:700; font-size:16px;
+      background: linear-gradient(90deg,#2563eb 0%, #7c3aed 100%);
+      box-shadow: 0 12px 30px rgba(37,99,235,0.12);
+      transition: transform .14s ease, box-shadow .14s ease;
+    }
+    .start-btn:active { transform: translateY(2px) scale(.998); }
+
+    .back-btn {
+      width:100%;
+      padding:10px 12px; border-radius:10px; border:1px solid #e6e9ef;
+      background:#f8fafc; color:#374151; font-weight:600; margin-top:8px;
+    }
+
+    /* Quiz */
+    .quiz-progress { margin-bottom:12px; display:flex; gap:12px; align-items:center; }
+    .progress-mini { flex:1; background:#f3f4f6; height:8px; border-radius:999px; overflow:hidden; }
+    .progress-mini .fill { height:100%; background: linear-gradient(90deg,#2563eb,#7c3aed); width:0%; transition: width .28s ease; }
+
+    .timer { display:flex; align-items:center; gap:8px; font-weight:800; font-size:22px; color:#2563eb; }
+    .timer.warn { color:#dc2626; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%{opacity:1}50%{opacity:.5}100%{opacity:1} }
+
+    .question-title { font-size:18px; font-weight:700; margin:14px 0; }
+
+    .options { display:grid; gap:10px; margin-top:6px; }
+    .option-btn {
+      text-align:left; padding:14px; border-radius:10px; border:2px solid #e6e9ef; background:white;
+      font-weight:600; transition: background .12s ease, border-color .12s ease, transform .08s ease;
+    }
+    .option-btn:hover { border-color:#93c5fd; background:#eff6ff; transform: translateY(-2px); }
+
+    /* Results */
+    .result-score { text-align:center; padding:26px; border-radius:12px; background: linear-gradient(90deg,#eef2ff,#f5f3ff); }
+    .score-big { font-size:48px; font-weight:900; background: linear-gradient(90deg,#2563eb,#7c3aed); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .score-percent { margin-top:8px; font-size:18px; color:#374151; }
+
+    .breakdown { display:grid; grid-template-columns: repeat(auto-fit,minmax(48px,1fr)); gap:10px; margin-top:12px; }
+    .break-tile { padding:12px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; }
+
+    /* Responsive */
+    @media (max-width:720px) {
+      .grid.cols-2 { grid-template-columns: 1fr; }
+      header { flex-direction:column; align-items:flex-start; gap:12px; }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- HEADER -->
+    <header>
+      <div>
+        <h1>Quiz Master</h1>
+        <p>Upload • Load • Quiz • Score</p>
+      </div>
+      <div class="header-controls">
+        <button id="audioToggle" class="icon-btn" title="Toggle audio (on)">
+          🔊
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN CARD -->
+    <main id="area">
+
+      <!-- Upload Step -->
+      <section id="step-upload" class="card" aria-hidden="false">
+        <div style="text-align:center; margin-bottom:10px;">
+          <h2 style="margin:0 0 6px; font-size:20px;">Upload Your File</h2>
+          <p style="margin:0; color:#6b7280;">Start by uploading an image or document</p>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+          <input id="fileInput" class="upload-input" type="file" accept="image/*,.pdf,.txt,.doc,.docx" />
+          <div class="upload-emoji">📁</div>
+          <h3 style="margin:0 0 6px; font-size:16px; font-weight:700;">Click to upload or drag and drop</h3>
+          <p style="margin:0;color:#6b7280;">Images, PDFs, or Documents</p>
+        </div>
+
+        <div id="fileNameWrap" style="display:none; margin-top:12px;">
+          <div class="file-info" id="fileInfo">✓ File ready: <span id="fileNameText" style="font-weight:700"></span></div>
+        </div>
+      </section>
+
+      <!-- Loading Step -->
+      <section id="step-loading" class="card" style="display:none;" aria-hidden="true">
+        <div style="text-align:center;">
+          <h2 style="margin:0 0 6px; font-size:20px;">Processing Your File</h2>
+          <p style="margin:0;color:#6b7280;">Analyzing content and generating questions...</p>
+        </div>
+
+        <div style="margin-top:18px; text-align:center;">
+          <div class="loading-dots">
+            <div class="dot"></div>
+            <div class="dot purple"></div>
+            <div class="dot pink"></div>
+          </div>
+
+          <div class="progress-wrap">
+            <div class="progress-bg">
+              <div id="progressFill" class="progress-fill" style="width:0%"></div>
+            </div>
+            <div class="progress-percent" id="progressPercent">0%</div>
+          </div>
+
+          <div class="loading-steps" style="margin-top:18px;">
+            <div class="loading-step"><div class="step-bullet">✓</div><div>File uploaded</div></div>
+            <div class="loading-step"><div id="step2Bullet" class="step-bullet">·</div><div>Analyzing content</div></div>
+            <div class="loading-step"><div id="step3Bullet" class="step-bullet">·</div><div>Generating questions</div></div>
+            <div class="loading-step"><div id="step4Bullet" class="step-bullet">·</div><div>Ready to start</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Ready Step -->
+      <section id="step-ready" class="card" style="display:none;" aria-hidden="true">
+        <div style="background:linear-gradient(90deg,#2563eb,#7c3aed); color:white; padding:14px; border-radius:10px; margin-bottom:14px;">
+          <div style="font-weight:700;">✓ File Loaded Successfully!</div>
+          <div id="readyFileName" style="opacity:0.95; margin-top:6px; font-size:13px;"></div>
+        </div>
+
+        <div class="card" style="padding:16px; margin-bottom:12px;">
+          <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+            <div style="font-size:22px;">📚</div>
+            <h3 style="margin:0; font-size:18px;">Skills You'll Develop</h3>
+          </div>
+
+          <div class="grid cols-2" style="margin-top:10px;">
+            <div class="skill">
+              <div style="font-size:20px;">📖</div>
+              <div>
+                <h4>Reading Comprehension</h4>
+                <p>Understand and retain key information from documents</p>
+              </div>
+            </div>
+            <div class="skill">
+              <div style="font-size:20px;">🧠</div>
+              <div>
+                <h4>Critical Thinking</h4>
+                <p>Analyze and evaluate information effectively</p>
+              </div>
+            </div>
+            <div class="skill">
+              <div style="font-size:20px;">⚡</div>
+              <div>
+                <h4>Quick Decision Making</h4>
+                <p>Make informed choices under time pressure</p>
+              </div>
+            </div>
+            <div class="skill">
+              <div style="font-size:20px;">💾</div>
+              <div>
+                <h4>Memory & Retention</h4>
+                <p>Improve your ability to recall important details</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:16px; margin-bottom:12px;">
+          <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+            <div style="font-size:22px;">⚡</div>
+            <h3 style="margin:0; font-size:18px;">Quiz Features</h3>
+          </div>
+
+          <div class="grid cols-2" style="margin-top:10px;">
+            <div class="feature"><div style="font-weight:700;">⏱️ 30-Second Timer</div><div style="margin-top:6px; font-size:13px;">Challenge yourself with time-limited questions</div></div>
+            <div class="feature"><div style="font-weight:700;">🔊 Sound Effects</div><div style="margin-top:6px; font-size:13px;">Instant audio feedback for each answer</div></div>
+            <div class="feature"><div style="font-weight:700;">📊 Instant Scoring</div><div style="margin-top:6px; font-size:13px;">See your detailed performance breakdown</div></div>
+            <div class="feature"><div style="font-weight:700;">❓ Multiple Choice</div><div style="margin-top:6px; font-size:13px;">Choose from 4 options per question</div></div>
+            <div class="feature"><div style="font-weight:700;">📈 AI Generated</div><div style="margin-top:6px; font-size:13px;">Questions tailored to your content</div></div>
+            <div class="feature"><div style="font-weight:700;">🎯 20 Questions</div><div style="margin-top:6px; font-size:13px;">Comprehensive assessment of knowledge</div></div>
+          </div>
+        </div>
+
+        <div style="background:linear-gradient(90deg,#ecfdf5,#eff6ff); padding:12px; border-radius:10px; margin-bottom:12px; border:1px solid #dcfce7;">
+          <div style="display:flex; gap:12px; align-items:flex-start;">
+            <div style="font-size:18px; color:#16a34a; margin-top:2px;">🎯</div>
+            <div>
+              <div style="font-weight:700; margin-bottom:6px;">Quiz Format</div>
+              <div style="color:#334155;"> <strong>20 Questions</strong> • <strong>30 seconds each</strong> • <strong>Multiple Choice</strong> • <strong>Instant Results</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; flex-direction:column;">
+          <button id="startBtn" class="start-btn" aria-label="Start quiz">
+            ▶ Start Quiz Now
+          </button>
+          <button id="backBtn" class="back-btn">← Upload Different File</button>
+        </div>
+      </section>
+
+      <!-- Quiz Step -->
+      <section id="step-quiz" class="card" style="display:none;" aria-hidden="true">
+        <div class="quiz-progress">
+          <div style="flex:1;">
+            <div class="progress-mini"><div id="quizProgressFill" class="fill" style="width:0%"></div></div>
+            <div style="font-size:13px; color:#6b7280; margin-top:6px;" id="qCounter">Question 1 of 5</div>
+          </div>
+          <div id="timerWrap" class="timer"><span style="font-size:18px;">⏱</span> <span id="timerValue">30s</span></div>
+        </div>
+
+        <div>
+          <h3 id="questionText" class="question-title">Question text</h3>
+          <div id="optionsWrap" class="options"></div>
+        </div>
+      </section>
+
+      <!-- Results Step -->
+      <section id="step-results" class="card" style="display:none;" aria-hidden="true">
+        <div style="text-align:center; margin-bottom:12px;">
+          <h2 style="margin:0 0 6px; font-size:22px;">Quiz Complete!</h2>
+          <p style="margin:0;color:#6b7280;">Here's how you performed</p>
+        </div>
+
+        <div class="result-score">
+          <div id="scoreText" class="score-big">0/0</div>
+          <div id="scorePercent" class="score-percent">0% Correct</div>
+        </div>
+
+        <div id="nonPerfect" style="display:none; margin-top:12px; background:#fffbeb; border:1px solid #fde68a; padding:12px; border-radius:8px;">
+          <div style="font-weight:700; color:#78350f;">Hindi totoo yan relapse ka muna</div>
+          <div style="margin-top:8px;"><a href="https://www.youtube.com/watch?v=Rht8rS4cR1s" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:8px 12px;background:#dc2626;color:#fff;border-radius:8px;text-decoration:none;">🎵 Watch Motivation Video</a></div>
+        </div>
+
+        <div id="perfect" style="display:none; margin-top:12px; background:#ecfdf5; border:1px solid #86efac; padding:12px; border-radius:8px;">
+          <div style="font-weight:800; color:#065f46;">🎉 Perfect Score! You're Amazing!</div>
+          <div style="margin-top:8px;"><a href="https://www.tiktok.com/@realpasta/video/7550749788950629654?q=baby%20phonk&t=1760922579629" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:8px 12px;background:#059669;color:#fff;border-radius:8px;text-decoration:none;">🎵 Celebrate Video</a></div>
+        </div>
+
+        <div class="breakdown" id="breakdownWrap" style="margin-top:14px;"></div>
+
+        <div style="margin-top:14px;">
+          <button id="tryAgainBtn" class="start-btn" style="background: linear-gradient(90deg,#2563eb,#7c3aed);">↺ Try Another Quiz</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+<script>
+/* ======= State ======= */
+let state = {
+  uploadedContent: '',
+  step: 'upload', // upload, loading, ready, quiz, results
+  questions: [],
+  currentQuestion: 0,
+  userAnswers: {}, // index -> selected option index
+  timeLeft: 30,
+  isRunning: false,
+  fileName: '',
+  score: 0,
+  audioEnabled: true,
+  loadingProgress: 0,
+  loadingInterval: null,
+  advanceTimeout: null
+};
+
+/* ======= Elements ======= */
+const el = id => document.getElementById(id);
+const stepUpload = el('step-upload');
+const stepLoading = el('step-loading');
+const stepReady = el('step-ready');
+const stepQuiz = el('step-quiz');
+const stepResults = el('step-results');
+
+const fileInput = el('fileInput');
+const uploadArea = el('uploadArea');
+const fileNameWrap = el('fileNameWrap');
+const fileNameText = el('fileNameText');
+const readyFileName = el('readyFileName');
+
+const progressFill = el('progressFill');
+const progressPercent = el('progressPercent');
+const step2Bullet = el('step2Bullet');
+const step3Bullet = el('step3Bullet');
+const step4Bullet = el('step4Bullet');
+
+const startBtn = el('startBtn');
+const backBtn = el('backBtn');
+
+const qCounter = el('qCounter');
+const questionText = el('questionText');
+const optionsWrap = el('optionsWrap');
+const quizProgressFill = el('quizProgressFill');
+const timerValue = el('timerValue');
+const timerWrap = el('timerWrap');
+
+const audioToggle = el('audioToggle');
+
+const scoreText = el('scoreText');
+const scorePercent = el('scorePercent');
+const nonPerfect = el('nonPerfect');
+const perfect = el('perfect');
+const breakdownWrap = el('breakdownWrap');
+const tryAgainBtn = el('tryAgainBtn');
+
+/* ======= Helpers ======= */
+
+function showStep(stepName) {
+  // hide all then show necessary
+  stepUpload.style.display = 'none';
+  stepLoading.style.display = 'none';
+  stepReady.style.display = 'none';
+  stepQuiz.style.display = 'none';
+  stepResults.style.display = 'none';
+
+  if (stepName === 'upload') stepUpload.style.display = '';
+  if (stepName === 'loading') stepLoading.style.display = '';
+  if (stepName === 'ready') stepReady.style.display = '';
+  if (stepName === 'quiz') stepQuiz.style.display = '';
+  if (stepName === 'results') stepResults.style.display = '';
+  state.step = stepName;
+}
+
+function clamp(v,min=0,max=100){ return Math.max(min, Math.min(max,v)); }
+
+/* ======= AUDIO (WebAudio simple tones) ======= */
+function playSound(type) {
+  if (!state.audioEnabled) return;
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioCtx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g);
+    g.connect(ctx.destination);
+    if (type === 'tick') {
+      o.frequency.value = 1000;
+      g.gain.setValueAtTime(0.28, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      o.start(ctx.currentTime);
+      o.stop(ctx.currentTime + 0.1);
+    } else if (type === 'correct') {
+      o.frequency.value = 800;
+      g.gain.setValueAtTime(0.28, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      o.start(ctx.currentTime);
+      o.stop(ctx.currentTime + 0.2);
+    } else if (type === 'wrong') {
+      o.frequency.value = 300;
+      g.gain.setValueAtTime(0.28, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      o.start(ctx.currentTime);
+      o.stop(ctx.currentTime + 0.2);
+    }
+    // close context after short delay to free resources
+    setTimeout(()=>{ try{ ctx.close(); }catch(e){} }, 700);
+  } catch(e) {
+    // ignore if AudioContext blocked by browser autoplay policy
+    console.warn('Audio error', e);
+  }
+}
+
+/* ======= File handling ======= */
+fileInput.addEventListener('change', handleFileUpload);
+uploadArea.addEventListener('drop', function(ev){
+  ev.preventDefault();
+  if (ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0]) {
+    fileInput.files = ev.dataTransfer.files;
+    handleFileUpload({ target: { files: ev.dataTransfer.files } });
+  }
+});
+uploadArea.addEventListener('dragover', function(ev){ ev.preventDefault(); });
+
+function handleFileUpload(e) {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  state.fileName = f.name || '';
+  fileNameText.textContent = state.fileName;
+  fileNameWrap.style.display = '';
+  readyFileName.textContent = state.fileName;
+
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    const content = event.target && event.target.result;
+    if (typeof content === 'string') {
+      state.uploadedContent = content.substring(0, 2000);
+    } else {
+      state.uploadedContent = '';
+    }
+    // start loading
+    startLoadingSimulation();
+    showStep('loading');
+  };
+
+  if (f.type.startsWith('image/')) {
+    reader.readAsDataURL(f);
+  } else {
+    reader.readAsText(f);
+  }
+}
+
+/* ======= Loading simulation ======= */
+function startLoadingSimulation() {
+  // reset
+  state.loadingProgress = 0;
+  progressFill.style.width = '0%';
+  progressPercent.textContent = '0%';
+  step2Bullet.textContent = '·';
+  step3Bullet.textContent = '·';
+  step4Bullet.textContent = '·';
+
+  if (state.loadingInterval) clearInterval(state.loadingInterval);
+  state.loadingInterval = setInterval(()=> {
+    // random + ensure progress eventually reaches 100
+    let increment = Math.random() * 30;
+    state.loadingProgress = clamp(state.loadingProgress + increment, 0, 100);
+    progressFill.style.width = Math.min(100, state.loadingProgress) + '%';
+    progressPercent.textContent = Math.floor(Math.min(100, state.loadingProgress)) + '%';
+
+    // update step bullets
+    if (state.loadingProgress > 30) step2Bullet.style.background = '#10b981', step2Bullet.textContent = '✓', step2Bullet.style.color = '#fff';
+    if (state.loadingProgress > 60) step3Bullet.style.background = '#10b981', step3Bullet.textContent = '✓', step3Bullet.style.color = '#fff';
+    if (state.loadingProgress > 90) step4Bullet.style.background = '#10b981', step4Bullet.textContent = '✓', step4Bullet.style.color = '#fff';
+
+    if (state.loadingProgress >= 100) {
+      clearInterval(state.loadingInterval);
+      state.loadingInterval = null;
+      // small pause then ready
+      setTimeout(()=> {
+        generateMockQuestions();
+        showStep('ready');
+      }, 500);
+    }
+  }, 300);
+}
+
+/* ======= Questions (mock) ======= */
+function generateMockQuestions() {
+  const mockQuestions = [
+    {
+      id: 1,
+      question: "Where are you focusing?",
+      options: ["Games", "Study", "Work", "to your crush"],
+      correct: 1
+    },
+    {
+      id: 2,
+      question: "do you love?",
+      options: ["No", "Yes", "Idk", "none of the above"],
+      correct: 1
+    },
+    {
+      id: 3,
+      question: "question do you love him?",
+      options: ["No", "Yes", "Idk", "none of the above"],
+      correct: 1
+    },
+    {
+      id: 4,
+      question: "Weh",
+      options: ["No", "Yes", "Idk", "none of the above"],
+      correct: 1
+    },
+    {
+      id: 5,
+      question: "really?",
+      options: ["No", "Yes", "Idk", "None of the above"],
+      correct: 1
+    },
+  ];
+  state.questions = mockQuestions;
+}
+
+/* ======= Start Quiz ======= */
+startBtn.addEventListener('click', function(){
+  // If no questions generated, generate them
+  if (!state.questions || state.questions.length === 0) generateMockQuestions();
+  state.currentQuestion = 0;
+  state.userAnswers = {};
+  state.timeLeft = 30;
+  state.isRunning = true;
+  showStep('quiz');
+  renderQuestion();
+  playSound('tick');
+  startTimer();
+});
+
+/* ======= Reset / Back ======= */
+backBtn.addEventListener('click', resetQuiz);
+tryAgainBtn.addEventListener('click', resetQuiz);
+
+function resetQuiz() {
+  // clear timers
+  state.uploadedContent = '';
+  state.questions = [];
+  state.currentQuestion = 0;
+  state.userAnswers = {};
+  state.timeLeft = 30;
+  state.isRunning = false;
+  state.fileName = '';
+  state.score = 0;
+  state.loadingProgress = 0;
+  if (state.loadingInterval) { clearInterval(state.loadingInterval); state.loadingInterval = null; }
+  if (state.advanceTimeout) { clearTimeout(state.advanceTimeout); state.advanceTimeout = null; }
+
+  // UI resets
+  fileNameWrap.style.display = 'none';
+  fileNameText.textContent = '';
+  readyFileName.textContent = '';
+  progressFill.style.width = '0%';
+  progressPercent.textContent = '0%';
+  step2Bullet.textContent = '·'; step3Bullet.textContent = '·'; step4Bullet.textContent = '·';
+  showStep('upload');
+}
+
+/* ======= Render quiz question & options ======= */
+function renderQuestion() {
+  const qIndex = state.currentQuestion;
+  const q = state.questions[qIndex];
+  if (!q) return;
+  qCounter.textContent = 'Question ' + (qIndex + 1) + ' of ' + state.questions.length;
+  questionText.textContent = q.question;
+  optionsWrap.innerHTML = '';
+
+  q.options.forEach((opt, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.type = 'button';
+    btn.textContent = String.fromCharCode(65 + idx) + '. ' + opt;
+    btn.onclick = () => handleAnswer(idx);
+    optionsWrap.appendChild(btn);
+  });
+
+  // update progress mini
+  const pct = ((qIndex + 1) / state.questions.length) * 100;
+  quizProgressFill.style.width = pct + '%';
+  // reset timer display color
+  timerValue.textContent = state.timeLeft + 's';
+  if (state.timeLeft <= 10) timerWrap.classList.add('warn'); else timerWrap.classList.remove('warn');
+}
+
+/* ======= Timer ======= */
+let timerInterval = null;
+function startTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  state.timeLeft = 30;
+  timerValue.textContent = state.timeLeft + 's';
+  timerInterval = setInterval(()=> {
+    if (!state.isRunning) return;
+    if (state.timeLeft <= 0) {
+      // time up
+      clearInterval(timerInterval);
+      timerInterval = null;
+      // treat as unanswered -> pass -1
+      handleAnswer(-1);
+      return;
+    }
+    state.timeLeft -= 1;
+    timerValue.textContent = state.timeLeft + 's';
+    if (state.timeLeft === 10) playSound('tick');
+    if (state.timeLeft <= 10) timerWrap.classList.add('warn'); else timerWrap.classList.remove('warn');
+  }, 1000);
+}
+
+/* ======= Handle Answer ======= */
+function handleAnswer(optionIndex) {
+  // prevent double answer if in transition
+  if (state.advanceTimeout) return;
+
+  const qIdx = state.currentQuestion;
+  // play sound based on correctness (if -1 it's wrong)
+  const correctIndex = state.questions[qIdx] && state.questions[qIdx].correct;
+  if (optionIndex >= 0 && correctIndex !== undefined) {
+    if (optionIndex === correctIndex) {
+      playSound('correct');
+    } else {
+      playSound('wrong');
+    }
+  } else {
+    playSound('wrong');
+  }
+
+  // record answer
+  state.userAnswers[qIdx] = optionIndex;
+
+  // stop timer for this question
+  state.isRunning = false;
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+
+  // move to next or finish after tiny delay so user can hear sound
+  state.advanceTimeout = setTimeout(()=> {
+    state.advanceTimeout = null;
+    if (state.currentQuestion < state.questions.length - 1) {
+      state.currentQuestion += 1;
+      state.timeLeft = 30;
+      state.isRunning = true;
+      renderQuestion();
+      startTimer();
+    } else {
+      finishQuiz();
+    }
+  }, 500);
+}
+
+/* ======= Finish & Scoring ======= */
+function finishQuiz() {
+  // calculate score
+  let correctCount = 0;
+  state.questions.forEach((q, idx) => {
+    if (state.userAnswers[idx] === q.correct) correctCount++;
+  });
+  state.score = correctCount;
+  state.isRunning = false;
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+
+  // UI update
+  scoreText.textContent = state.score + '/' + state.questions.length;
+  const percent = Math.round((state.score / state.questions.length) * 100);
+  scorePercent.textContent = percent + '% Correct';
+
+  if (state.score === state.questions.length) {
+    perfect.style.display = '';
+    nonPerfect.style.display = 'none';
+  } else {
+    perfect.style.display = 'none';
+    nonPerfect.style.display = '';
+  }
+
+  // breakdown tiles
+  breakdownWrap.innerHTML = '';
+  state.questions.forEach((q, idx) => {
+    const div = document.createElement('div');
+    div.className = 'break-tile';
+    if (state.userAnswers[idx] === q.correct) {
+      div.style.background = '#ecfdf5';
+      div.style.color = '#065f46';
+      div.textContent = '✓';
+    } else {
+      div.style.background = '#fff1f2';
+      div.style.color = '#991b1b';
+      div.textContent = '✕';
+    }
+    breakdownWrap.appendChild(div);
+  });
+
+  showStep('results');
+}
+
+/* ======= Audio toggle ======= */
+audioToggle.addEventListener('click', function(){
+  state.audioEnabled = !state.audioEnabled;
+  audioToggle.textContent = state.audioEnabled ? '🔊' : '🔇';
+  audioToggle.title = 'Toggle audio (' + (state.audioEnabled ? 'on' : 'off') + ')';
+});
+
+/* ======= Initialize UI ======= */
+showStep('upload');
+
+/* ======= Accessibility: keyboard start (Enter on start) ======= */
+document.addEventListener('keydown', (e)=> {
+  if (e.key === 'Enter' && state.step === 'ready') {
+    startBtn.click();
+  }
+});
+
+/* ======= If the user visits step-ready without uploading, ensure questions exist ======= */
+startBtn.addEventListener('mouseenter', function(){
+  if (!state.questions || state.questions.length === 0) generateMockQuestions();
+});
+
+</script>
+</body>
+</html>
